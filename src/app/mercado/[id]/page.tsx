@@ -114,7 +114,8 @@ export default async function MarketPage({
 }: { 
   params: { id: string } 
 }) {
-  const market = await getMarket(params.id);
+  const { id } = await params;
+  const market = await getMarket(id);
   
   if (!market) {
     notFound();

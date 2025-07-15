@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
+import { ToastContainer } from "@/components/ui/toast";
 
 export const metadata: Metadata = {
   title: "Predik - Mercados de Predicción",
@@ -17,6 +18,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background antialiased">
         <Navbar />
         <main>{children}</main>
+        <ToastContainer />
       </body>
     </html>
   );

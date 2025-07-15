@@ -6,18 +6,17 @@ interface ActivityFeedProps {
 
 interface ActivityItem {
   id: string;
-  type: 'trade' | 'comment' | 'market_update';
+  type: 'trade';
   user: string;
-  action: string;
-  outcome?: string;
-  shares?: number;
-  price?: number;
+  action: 'compró' | 'vendió';
+  outcome: string;
+  shares: number;
+  price: number;
   timestamp: string;
-  comment?: string;
 }
 
 export function ActivityFeed({ marketId }: ActivityFeedProps) {
-  // Mock activity data
+  // Mock activity data - only buy/sell trades
   const mockActivity: ActivityItem[] = [
     {
       id: '1',
@@ -41,14 +40,6 @@ export function ActivityFeed({ marketId }: ActivityFeedProps) {
     },
     {
       id: '3',
-      type: 'comment',
-      user: 'PoliticoArgento',
-      action: 'comentó',
-      comment: 'Las encuestas recientes muestran una tendencia interesante...',
-      timestamp: '2024-07-15T09:45:00Z'
-    },
-    {
-      id: '4',
       type: 'trade',
       user: 'InversorBA',
       action: 'compró',
@@ -58,15 +49,7 @@ export function ActivityFeed({ marketId }: ActivityFeedProps) {
       timestamp: '2024-07-15T09:30:00Z'
     },
     {
-      id: '5',
-      type: 'market_update',
-      user: 'Sistema',
-      action: 'actualizó',
-      comment: 'Nuevo volumen récord alcanzado: $125,000',
-      timestamp: '2024-07-15T09:00:00Z'
-    },
-    {
-      id: '6',
+      id: '4',
       type: 'trade',
       user: 'TradingPro',
       action: 'vendió',
@@ -74,6 +57,46 @@ export function ActivityFeed({ marketId }: ActivityFeedProps) {
       shares: 75,
       price: 0.64,
       timestamp: '2024-07-15T08:45:00Z'
+    },
+    {
+      id: '5',
+      type: 'trade',
+      user: 'ApostadorPro',
+      action: 'compró',
+      outcome: 'NO',
+      shares: 30,
+      price: 0.38,
+      timestamp: '2024-07-15T08:20:00Z'
+    },
+    {
+      id: '6',
+      type: 'trade',
+      user: 'EconomistBA',
+      action: 'vendió',
+      outcome: 'NO',
+      shares: 60,
+      price: 0.36,
+      timestamp: '2024-07-15T07:55:00Z'
+    },
+    {
+      id: '7',
+      type: 'trade',
+      user: 'Inversor123',
+      action: 'compró',
+      outcome: 'SÍ',
+      shares: 40,
+      price: 0.66,
+      timestamp: '2024-07-15T07:30:00Z'
+    },
+    {
+      id: '8',
+      type: 'trade',
+      user: 'Trader_AR',
+      action: 'vendió',
+      outcome: 'NO',
+      shares: 15,
+      price: 0.34,
+      timestamp: '2024-07-15T07:10:00Z'
     }
   ];
 
@@ -89,21 +112,11 @@ export function ActivityFeed({ marketId }: ActivityFeedProps) {
     return `${Math.floor(diffMins / 1440)}d`;
   };
 
-  const getActionIcon = (type: string) => {
-    switch (type) {
-      case 'trade':
-        return '💹';
-      case 'comment':
-        return '💬';
-      case 'market_update':
-        return '📊';
-      default:
-        return '📈';
-    }
+  const getActionIcon = (action: 'compró' | 'vendió') => {
+    return action === 'compró' ? '�' : '�';
   };
 
-  const getOutcomeColor = (outcome?: string) => {
-    if (!outcome) return '';
+  const getOutcomeColor = (outcome: string) => {
     return outcome === 'SÍ' ? 'text-green-600' : 'text-red-600';
   };
 
@@ -114,36 +127,25 @@ export function ActivityFeed({ marketId }: ActivityFeedProps) {
       <div className="space-y-3">
         {mockActivity.map((item) => (
           <div key={item.id} className="flex items-start space-x-3 p-3 rounded-lg bg-muted/30">
-            <div className="text-lg">{getActionIcon(item.type)}</div>
+            <div className="text-lg">{getActionIcon(item.action)}</div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between">
                 <div className="text-sm">
                   <span className="font-medium">{item.user}</span>
                   <span className="text-muted-foreground"> {item.action} </span>
-                  
-                  {item.type === 'trade' && (
-                    <>
-                      <span className={`font-medium ${getOutcomeColor(item.outcome)}`}>
-                        {item.shares} {item.outcome}
-                      </span>
-                      <span className="text-muted-foreground">
-                        {' '}a ${(item.price! * 100).toFixed(0)}¢
-                      </span>
-                    </>
-                  )}
+                  <span className={`font-medium ${getOutcomeColor(item.outcome)}`}>
+                    {item.shares} {item.outcome}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {' '}a ${(item.price * 100).toFixed(0)}¢
+                  </span>
                 </div>
                 
                 <span className="text-xs text-muted-foreground">
                   {formatTimestamp(item.timestamp)}
                 </span>
               </div>
-              
-              {item.comment && (
-                <div className="text-sm text-muted-foreground mt-1">
-                  {item.comment}
-                </div>
-              )}
             </div>
           </div>
         ))}

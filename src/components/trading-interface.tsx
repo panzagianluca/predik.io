@@ -80,7 +80,10 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
                 }`}
               >
                 <div className="text-sm font-medium">SÍ</div>
-                <div className="text-lg font-bold text-green-800">
+                <div className="text-2xl font-bold text-green-800">
+                  {((market as BinaryMarket).yesPrice * 100).toFixed(0)}%
+                </div>
+                <div className="text-xs text-green-600">
                   ${((market as BinaryMarket).yesPrice * 100).toFixed(0)}¢
                 </div>
               </button>
@@ -93,7 +96,10 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
                 }`}
               >
                 <div className="text-sm font-medium">NO</div>
-                <div className="text-lg font-bold text-red-800">
+                <div className="text-2xl font-bold text-red-800">
+                  {((market as BinaryMarket).noPrice * 100).toFixed(0)}%
+                </div>
+                <div className="text-xs text-red-600">
                   ${((market as BinaryMarket).noPrice * 100).toFixed(0)}¢
                 </div>
               </button>
@@ -112,12 +118,17 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-medium">{option.text}</span>
-                    <span 
-                      className="text-sm font-bold px-2 py-1 rounded text-white"
-                      style={{ backgroundColor: option.color }}
-                    >
-                      ${(option.price * 100).toFixed(0)}¢
-                    </span>
+                    <div className="text-right">
+                      <div 
+                        className="text-lg font-bold text-white px-2 py-1 rounded"
+                        style={{ backgroundColor: option.color }}
+                      >
+                        {(option.price * 100).toFixed(0)}%
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        ${(option.price * 100).toFixed(0)}¢
+                      </div>
+                    </div>
                   </div>
                 </button>
               ))}
@@ -157,7 +168,10 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
         <div className="mb-6 p-3 bg-muted rounded-lg">
           <div className="flex justify-between text-sm mb-1">
             <span>Precio por acción:</span>
-            <span>${(getCurrentPrice() * 100).toFixed(0)}¢</span>
+            <div className="text-right">
+              <div className="font-semibold">{(getCurrentPrice() * 100).toFixed(0)}%</div>
+              <div className="text-xs text-muted-foreground">${(getCurrentPrice() * 100).toFixed(0)}¢</div>
+            </div>
           </div>
           <div className="flex justify-between text-sm mb-1">
             <span>Cantidad:</span>
