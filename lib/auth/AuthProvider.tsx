@@ -38,6 +38,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         setSession(session)
         setUser(session?.user ?? null)
+        
+        // Check profile on initial load if user exists
+        if (session?.user) {
+          console.log('🔄 Initial session found, ensuring profile exists...')
+          try {
+            await ensureUserProfile(session.user)
+          } catch (error) {
+            console.error('❌ Failed to ensure profile on initial load:', error)
+          }
+        }
       }
       setLoading(false)
     }
@@ -47,13 +57,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event: AuthChangeEvent, session: Session | null) => {
+        console.log('🔔 Auth event:', event, 'Session:', !!session, 'User ID:', session?.user?.id)
+        
         setSession(session)
         setUser(session?.user ?? null)
         setLoading(false)
 
-        // Create user profile on first sign in
-        if (event === 'SIGNED_IN' && session?.user) {
-          await createUserProfile(session.user)
+        // Check and create profile for any auth event with a valid session
+        if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
+          console.log('� User session detected, checking profile...', {
+            event,
+            userId: session.user.id,
+            email: session.user.email
+          })
+          
+          try {
+            await ensureUserProfile(session.user)
+          } catch (error) {
+            console.error('❌ Failed to ensure user profile:', error)
+          }
         }
       }
     )
@@ -61,38 +83,85 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  const createUserProfile = async (user: User) => {
+  const ensureUserProfile = async (user: User) => {
+    console.log('🔍 Ensuring user profile exists for:', user.id)
+    
     try {
-      // Check if profile already exists
-      const { data: existingProfile } = await supabase
+      // First, check if profile already exists
+      const { data: existingProfile, error: checkError } = await supabase
         .from('users_profile')
-        .select('id')
+        .select('id, username, balance')
         .eq('id', user.id)
         .single()
 
-      if (!existingProfile) {
-        // Create new profile
-        const { error } = await supabase
-          .from('users_profile')
-          .insert({
-            id: user.id,
-            full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Anonymous',
-            username: generateUsername(user.user_metadata.full_name || user.email?.split('@')[0] || 'user'),
-            avatar_url: user.user_metadata.avatar_url || null,
-            auth_provider: 'google'
-          })
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 = not found, which is expected for new users
+        console.error('❌ Error checking profile:', checkError)
+        throw checkError
+      }
 
-        if (error) {
-          console.error('Error creating user profile:', error)
+      if (existingProfile) {
+        console.log('✅ Profile already exists:', existingProfile.username, `$${existingProfile.balance}`)
+        return existingProfile
+      }
+
+      // Profile doesn't exist, create it
+      console.log('🆕 Profile not found, creating new profile...')
+      await createUserProfile(user)
+      
+    } catch (error) {
+      console.error('❌ Error in ensureUserProfile:', error)
+      throw error
+    }
+  }
+
+  const createUserProfile = async (user: User) => {
+    console.log('🔄 Starting automatic createUserProfile for user:', user.id)
+    
+    try {
+      // Use the same database function that worked in manual testing
+      const baseUsername = (user.user_metadata.full_name || user.email?.split('@')[0] || 'user')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+      
+      console.log('� Creating profile using database function...')
+      
+      const { data, error } = await supabase
+        .rpc('create_user_profile', {
+          p_user_id: user.id,
+          p_full_name: user.user_metadata.full_name || user.email?.split('@')[0] || 'Anonymous User',
+          p_username: baseUsername,
+          p_avatar_url: user.user_metadata.avatar_url || null,
+          p_auth_provider: 'google'
+        })
+
+      if (error) {
+        console.error('❌ Automatic profile creation - Database function error:', error)
+        throw error
+      }
+
+      if (data?.success) {
+        console.log('✅ Automatic profile created successfully:', data)
+        return data
+      } else {
+        console.log('ℹ️ Profile creation response:', data)
+        // Don't throw error if profile already exists
+        if (data?.message && data.message.includes('already exists')) {
+          console.log('✅ Profile already exists, continuing...')
+          return data
+        } else {
+          console.error('❌ Automatic profile creation failed:', data?.error)
+          throw new Error(data?.error || 'Profile creation failed')
         }
       }
     } catch (error) {
-      console.error('Error in createUserProfile:', error)
+      console.error('❌ Error in automatic createUserProfile:', error)
+      throw error
     }
   }
 
   const generateUsername = (name: string): string => {
-    // Generate a unique username based on the name
+    // This function is no longer used - username generation is now handled in createUserProfile
     const baseUsername = name.toLowerCase().replace(/[^a-z0-9]/g, '')
     const randomSuffix = Math.floor(Math.random() * 1000)
     return `${baseUsername}${randomSuffix}`

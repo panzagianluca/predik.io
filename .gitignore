@@ -43,3 +43,10 @@ PREDIK_IO_IMPLEMENTATION_PLAN.md
 SUPABASE_SETUP_GUIDE.md
 PREDIK_IO_IMPLEMENTATION_PLAN.md
 .gitignore
+database/01_create_tables.sql
+database/02_additional_tables.sql
+database/03_rls_policies.sql
+database/04_functions.sql
+database/05_triggers_and_setup.sql
+database/06_user_profile_function.sql
+database/debug_check.sql

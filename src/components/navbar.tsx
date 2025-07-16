@@ -201,6 +201,9 @@ function UserMenuSection() {
             <Link href="/proponer" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
               💡 Proponer Mercado
             </Link>
+            <Link href="/test" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              🧪 Test Database
+            </Link>
             <Link href="/terminos" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
               Términos
             </Link>
