@@ -200,29 +200,31 @@ export class TradingService {
   async getMarketDetails(marketId: string) {
     console.log('Fetching market details for ID:', marketId);
     
+    // First, let's try without market_comments to see if it exists
     const { data: market, error: marketError } = await this.supabase
       .from('markets')
       .select(`
         *,
         binary_market_pools(*),
-        market_options(*),
-        market_comments(
-          *,
-          users_profile(username, avatar_url)
-        )
+        market_options(*)
       `)
       .eq('id', marketId)
       .single()
 
     if (marketError) {
-      console.error('Error fetching market details:', {
-        error: marketError,
-        message: marketError.message,
-        code: marketError.code,
-        details: marketError.details,
-        hint: marketError.hint,
-        marketId: marketId
-      })
+      // Only log detailed errors for non-routine cases (not just "no rows returned")
+      if (marketError.code !== 'PGRST116') {
+        console.error('Error fetching market details:', {
+          error: marketError,
+          message: marketError.message,
+          code: marketError.code,
+          details: marketError.details,
+          hint: marketError.hint,
+          marketId: marketId
+        })
+      } else {
+        console.log('Market not found with ID:', marketId, '(will try fallback if needed)')
+      }
       return null
     }
 

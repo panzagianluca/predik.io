@@ -9,22 +9,29 @@ async function getMarket(id: string): Promise<Market | null> {
   try {
     console.log('getMarket called with ID:', id);
     
-    // First try to get market directly by the ID (should work for TEXT IDs like 'market-1')
-    let marketData = await tradingService.getMarketDetails(id);
+    // If the ID is numeric, convert it to the proper format first
+    let marketId = id;
+    if (/^\d+$/.test(id)) {
+      marketId = `market-${id}`;
+      console.log('Converted numeric ID to:', marketId);
+    }
+    
+    // Try to get market with the proper ID format
+    let marketData = await tradingService.getMarketDetails(marketId);
     
     if (!marketData) {
-      console.log('Market not found by direct ID, trying fallback methods');
+      console.log('Market not found with ID:', marketId, 'trying fallback methods');
       
       // Fallback: Get all markets and try to find a match
       const allMarkets = await tradingService.getActiveMarkets();
       console.log('Found', allMarkets.length, 'active markets');
       
       // Try to find by exact ID match first
-      let foundMarket = allMarkets.find(m => m.id === id);
+      let foundMarket = allMarkets.find(m => m.id === id || m.id === marketId);
       
-      // If still not found, try numeric ID matching (for backward compatibility)
+      // If still not found and original ID was numeric, try other variations
       if (!foundMarket && /^\d+$/.test(id)) {
-        // If the ID is purely numeric, try to find by converted display ID
+        // Try to find by converted display ID
         foundMarket = allMarkets.find(m => {
           const idParts = m.id.split('-');
           if (idParts.length >= 2 && idParts[0] === 'market') {

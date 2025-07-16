@@ -62,3 +62,8 @@ database/test_connection.sql
 .gitignore
 database/96_fix_user_profile_creation.sql
 database/test_market_access.sql
+database/99_migrate_to_text_ids.sql
+database/create_missing_rls_policies.sql
+database/fix_function_conflicts.sql
+database/fix_missing_market_comments.sql
+PREDIK_IO_IMPLEMENTATION_PLAN.md

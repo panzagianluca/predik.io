@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Portfolio } from '@/components/portfolio';
 import { TradeHistory } from '@/components/trade-history';
+import { useAuth } from '../../../lib/auth/AuthProvider';
 import { 
   Wallet, 
   History
@@ -11,11 +12,22 @@ import {
 
 export default function PortafolioPage() {
   const [activeTab, setActiveTab] = useState<'portfolio' | 'history'>('portfolio');
+  const { user } = useAuth();
 
   const tabs = [
     { id: 'portfolio', label: 'Posiciones', icon: Wallet },
     { id: 'history', label: 'Historial', icon: History },
   ];
+
+  if (!user) {
+    return (
+      <div className="container mx-auto px-6 py-8">
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Debes iniciar sesión para ver tu portfolio</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -53,8 +65,8 @@ export default function PortafolioPage() {
 
         {/* Tab Content */}
         <div className="min-h-[600px]">
-          {activeTab === 'portfolio' && <Portfolio userId="user1" />}
-          {activeTab === 'history' && <TradeHistory userId="user1" />}
+          {activeTab === 'portfolio' && <Portfolio userId={user.id} />}
+          {activeTab === 'history' && <TradeHistory userId={user.id} />}
         </div>
       </div>
     </div>
