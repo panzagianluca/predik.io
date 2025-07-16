@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Market, BinaryMarket, MultipleChoiceMarket } from '@/types/market';
+import { tradingService, PriceHistoryPoint } from '../../lib/supabase/trading';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface MarketChartProps {
@@ -12,55 +13,151 @@ export function MarketChart({ market }: MarketChartProps) {
   const [mounted, setMounted] = useState(false);
   const [chartData, setChartData] = useState<any[]>([]);
   const [percentageChanges, setPercentageChanges] = useState<number[]>([]);
+  const [timeframe, setTimeframe] = useState<'24h' | '7d' | '30d' | 'all'>('24h');
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setMounted(true);
-    
-    // Generate deterministic mock data based on market ID
-    const seedRandom = (seed: number) => {
-      let x = Math.sin(seed) * 10000;
-      return x - Math.floor(x);
-    };
+    loadPriceHistory();
+  }, [market.uuid, timeframe]);
 
-    // Mock data for the chart - in a real app this would come from your API
-    const mockData = Array.from({ length: 30 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (29 - i));
+  const getHoursForTimeframe = (tf: string) => {
+    switch (tf) {
+      case '24h': return 24;
+      case '7d': return 24 * 7;
+      case '30d': return 24 * 30;
+      case 'all': return 24 * 365; // Max 1 year
+      default: return 24;
+    }
+  };
+
+  const loadPriceHistory = async () => {
+    setLoading(true);
+    try {
+      const hours = getHoursForTimeframe(timeframe);
       
       if (market.type === 'binary') {
-        const basePrice = (market as BinaryMarket).yesPrice;
-        const variation = (seedRandom(market.id * 100 + i) - 0.5) * 0.1;
-        return {
-          date: date.toLocaleDateString('es-AR'),
-          yesPrice: Math.max(0.05, Math.min(0.95, basePrice + variation)),
-          noPrice: Math.max(0.05, Math.min(0.95, 1 - (basePrice + variation)))
-        };
+        // For binary markets, get both YES and NO price history
+        const { data: yesData } = await tradingService.getPriceHistory(market.uuid || '', undefined, hours);
+        
+        if (yesData && yesData.length > 0) {
+          // Group by timestamp and combine YES/NO prices
+          const priceMap = new Map();
+          
+          yesData.forEach((point: PriceHistoryPoint) => {
+            const timestamp = new Date(point.timestamp).toISOString().split('T')[0];
+            if (!priceMap.has(timestamp)) {
+              priceMap.set(timestamp, { date: new Date(point.timestamp).toLocaleDateString('es-AR') });
+            }
+            
+            if (point.price_type === 'yes') {
+              priceMap.get(timestamp).yesPrice = point.price;
+            } else if (point.price_type === 'no') {
+              priceMap.get(timestamp).noPrice = point.price;
+            }
+          });
+          
+          const sortedData = Array.from(priceMap.values()).sort((a, b) => 
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          
+          setChartData(sortedData);
+          
+          // Calculate percentage changes
+          if (sortedData.length >= 2) {
+            const latest = sortedData[sortedData.length - 1];
+            const previous = sortedData[sortedData.length - 2];
+            const yesChange = latest.yesPrice && previous.yesPrice ? 
+              ((latest.yesPrice - previous.yesPrice) / previous.yesPrice * 100) : 0;
+            setPercentageChanges([yesChange, -yesChange]);
+          }
+        } else {
+          // Fallback to current prices if no history
+          setChartData([{
+            date: new Date().toLocaleDateString('es-AR'),
+            yesPrice: (market as BinaryMarket).yesPrice,
+            noPrice: (market as BinaryMarket).noPrice
+          }]);
+        }
+      } else {
+        // For multiple choice markets, get price history for each option
+        const multiMarket = market as MultipleChoiceMarket;
+        const allPriceData: PriceHistoryPoint[] = [];
+        
+        // Fetch price history for all options
+        for (const option of multiMarket.options) {
+          const { data } = await tradingService.getPriceHistory(market.uuid || '', option.id, hours);
+          if (data) {
+            allPriceData.push(...data);
+          }
+        }
+        
+        if (allPriceData.length > 0) {
+          // Group by timestamp
+          const priceMap = new Map();
+          
+          allPriceData.forEach((point: PriceHistoryPoint) => {
+            const timestamp = new Date(point.timestamp).toISOString().split('T')[0];
+            if (!priceMap.has(timestamp)) {
+              priceMap.set(timestamp, { date: new Date(point.timestamp).toLocaleDateString('es-AR') });
+            }
+            
+            if (point.option_id) {
+              priceMap.get(timestamp)[`option_${point.option_id}`] = point.price;
+            }
+          });
+          
+          const sortedData = Array.from(priceMap.values()).sort((a, b) => 
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+          );
+          
+          setChartData(sortedData);
+          
+          // Calculate percentage changes for each option
+          if (sortedData.length >= 2) {
+            const latest = sortedData[sortedData.length - 1];
+            const previous = sortedData[sortedData.length - 2];
+            const changes = multiMarket.options.map(option => {
+              const latestPrice = latest[`option_${option.id}`];
+              const previousPrice = previous[`option_${option.id}`];
+              return latestPrice && previousPrice ? 
+                ((latestPrice - previousPrice) / previousPrice * 100) : 0;
+            });
+            setPercentageChanges(changes);
+          }
+        } else {
+          // Fallback to current prices
+          const dataPoint: any = {
+            date: new Date().toLocaleDateString('es-AR')
+          };
+          multiMarket.options.forEach(option => {
+            dataPoint[`option_${option.id}`] = option.price;
+          });
+          setChartData([dataPoint]);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading price history:', error);
+      // Fallback to current market prices
+      if (market.type === 'binary') {
+        setChartData([{
+          date: new Date().toLocaleDateString('es-AR'),
+          yesPrice: (market as BinaryMarket).yesPrice,
+          noPrice: (market as BinaryMarket).noPrice
+        }]);
       } else {
         const dataPoint: any = {
-          date: date.toLocaleDateString('es-AR')
+          date: new Date().toLocaleDateString('es-AR')
         };
-        
-        // Add each option as a separate data key for the chart
-        (market as MultipleChoiceMarket).options.forEach((option, optionIndex) => {
-          const variation = (seedRandom(market.id * 100 + i + optionIndex) - 0.5) * 0.05;
-          dataPoint[`option_${option.id}`] = Math.max(0.05, Math.min(0.95, option.price + variation));
+        (market as MultipleChoiceMarket).options.forEach(option => {
+          dataPoint[`option_${option.id}`] = option.price;
         });
-        
-        return dataPoint;
+        setChartData([dataPoint]);
       }
-    });
-
-    setChartData(mockData);
-
-    // Generate deterministic percentage changes for options
-    if (market.type === 'multiple') {
-      const changes = (market as MultipleChoiceMarket).options.map((_, index) => {
-        const change = (seedRandom(market.id * 10 + index) - 0.5) * 10; // -5% to +5%
-        return Number(change.toFixed(1));
-      });
-      setPercentageChanges(changes);
+    } finally {
+      setLoading(false);
     }
-  }, [market.id, market.type]);
+  };
 
   // Show loading state during SSR
   if (!mounted) {
@@ -84,18 +181,58 @@ export function MarketChart({ market }: MarketChartProps) {
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Gráfico de Precios</h3>
           <div className="flex space-x-2 text-xs">
-            <button className="px-3 py-1.5 rounded-md bg-primary text-primary-foreground font-medium">1D</button>
-            <button className="px-3 py-1.5 rounded-md hover:bg-muted transition-colors">7D</button>
-            <button className="px-3 py-1.5 rounded-md hover:bg-muted transition-colors">1M</button>
-            <button className="px-3 py-1.5 rounded-md hover:bg-muted transition-colors">3M</button>
-            <button className="px-3 py-1.5 rounded-md hover:bg-muted transition-colors">Todo</button>
+            <button 
+              onClick={() => setTimeframe('24h')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                timeframe === '24h' 
+                  ? 'bg-primary text-primary-foreground font-medium' 
+                  : 'hover:bg-muted'
+              }`}
+            >
+              1D
+            </button>
+            <button 
+              onClick={() => setTimeframe('7d')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                timeframe === '7d' 
+                  ? 'bg-primary text-primary-foreground font-medium' 
+                  : 'hover:bg-muted'
+              }`}
+            >
+              7D
+            </button>
+            <button 
+              onClick={() => setTimeframe('30d')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                timeframe === '30d' 
+                  ? 'bg-primary text-primary-foreground font-medium' 
+                  : 'hover:bg-muted'
+              }`}
+            >
+              1M
+            </button>
+            <button 
+              onClick={() => setTimeframe('all')}
+              className={`px-3 py-1.5 rounded-md transition-colors ${
+                timeframe === 'all' 
+                  ? 'bg-primary text-primary-foreground font-medium' 
+                  : 'hover:bg-muted'
+              }`}
+            >
+              Todo
+            </button>
           </div>
         </div>
       </div>
 
       {/* Interactive Chart */}
       <div className="h-80 bg-card rounded-lg border p-4 mb-4">
-        <ResponsiveContainer width="100%" height="100%">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-pulse text-muted-foreground">Cargando datos del gráfico...</div>
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis 
@@ -157,7 +294,8 @@ export function MarketChart({ market }: MarketChartProps) {
               ))
             )}
           </LineChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        )}
       </div>
 
       {/* Current Prices Display */}
@@ -169,7 +307,7 @@ export function MarketChart({ market }: MarketChartProps) {
               {((market as BinaryMarket).yesPrice * 100).toFixed(0)}%
             </div>
             <div className="text-xs text-green-600">
-              +2.3% últimas 24h
+              {percentageChanges[0] >= 0 ? '+' : ''}{percentageChanges[0]?.toFixed(1) || '0.0'}% últimas 24h
             </div>
           </div>
           <div className="text-center p-3 bg-red-50 rounded-lg border border-red-200">
@@ -178,7 +316,7 @@ export function MarketChart({ market }: MarketChartProps) {
               {((market as BinaryMarket).noPrice * 100).toFixed(0)}%
             </div>
             <div className="text-xs text-red-600">
-              -2.3% últimas 24h
+              {percentageChanges[1] >= 0 ? '+' : ''}{percentageChanges[1]?.toFixed(1) || '0.0'}% últimas 24h
             </div>
           </div>
         </div>

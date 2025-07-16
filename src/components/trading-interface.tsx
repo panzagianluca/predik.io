@@ -4,18 +4,24 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Market, BinaryMarket, MultipleChoiceMarket } from '@/types/market';
 import { Minus, Plus } from 'lucide-react';
+import { tradingService } from '../../lib/supabase/trading';
+import { useAuth } from '../../lib/auth/AuthProvider';
 
 interface TradingInterfaceProps {
   market: Market;
+  onTradeComplete?: () => void;
 }
 
-export function TradingInterface({ market }: TradingInterfaceProps) {
+export function TradingInterface({ market, onTradeComplete }: TradingInterfaceProps) {
+  const { user } = useAuth();
   const [selectedOutcome, setSelectedOutcome] = useState<string>(
     market.type === 'binary' ? 'yes' : market.options[0].id
   );
   const [tradeType, setTradeType] = useState<'buy' | 'sell'>('buy');
   const [shares, setShares] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isExecuting, setIsExecuting] = useState(false);
+  const [tradeResult, setTradeResult] = useState<{ success: boolean; message: string } | null>(null);
 
   const getCurrentPrice = () => {
     if (market.type === 'binary') {
@@ -32,9 +38,71 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
     return shares * getCurrentPrice();
   };
 
+  const executeTrade = async () => {
+    if (!user) {
+      setTradeResult({ success: false, message: 'Debes iniciar sesión para realizar operaciones' });
+      return;
+    }
+
+    setIsExecuting(true);
+    setTradeResult(null);
+
+    try {
+      // Use the original UUID for database operations
+      const marketUuid = market.uuid || market.id.toString();
+      const amount = getTotalCost();
+
+      let result;
+
+      if (market.type === 'binary') {
+        // Binary market trading
+        const binaryTradeType = selectedOutcome === 'yes' ? 'buy_yes' : 'buy_no';
+        result = await tradingService.executeBinaryTrade(
+          marketUuid,
+          user.id,
+          binaryTradeType,
+          amount
+        );
+      } else {
+        // Multiple choice option trading
+        result = await tradingService.executeOptionTrade(
+          marketUuid,
+          user.id,
+          selectedOutcome, // Option ID
+          'buy_option',
+          amount
+        );
+      }
+
+      if (result.success) {
+        setTradeResult({ 
+          success: true, 
+          message: `¡Operación exitosa! Compraste ${result.shares_bought?.toFixed(2)} acciones a $${result.price_per_share?.toFixed(2)} cada una.` 
+        });
+        // Reset form
+        setShares(10);
+        // Notify parent component to refresh data
+        onTradeComplete?.();
+      } else {
+        setTradeResult({ 
+          success: false, 
+          message: result.error || 'Error al ejecutar la operación' 
+        });
+      }
+    } catch (error) {
+      console.error('Error executing trade:', error);
+      setTradeResult({ 
+        success: false, 
+        message: 'Error de conexión. Inténtalo de nuevo.' 
+      });
+    } finally {
+      setIsExecuting(false);
+    }
+  };
+
   const handleTrade = () => {
     setIsModalOpen(true);
-    // Aquí iría la lógica de trading real
+    setTradeResult(null);
   };
 
   return (
@@ -234,19 +302,44 @@ export function TradingInterface({ market }: TradingInterfaceProps) {
                 variant="outline" 
                 onClick={() => setIsModalOpen(false)}
                 className="flex-1"
+                disabled={isExecuting}
               >
                 Cancelar
               </Button>
               <Button 
-                onClick={() => {
-                  setIsModalOpen(false);
-                  // Aquí iría la lógica real de la operación
-                }}
+                onClick={executeTrade}
                 className="flex-1"
+                disabled={isExecuting || !user}
               >
-                Confirmar
+                {isExecuting ? 'Procesando...' : 'Confirmar'}
               </Button>
             </div>
+
+            {/* Trade Result Display */}
+            {tradeResult && (
+              <div className={`mt-4 p-3 rounded-lg ${
+                tradeResult.success 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                <p className="text-sm">{tradeResult.message}</p>
+                {tradeResult.success && (
+                  <Button 
+                    onClick={() => setIsModalOpen(false)}
+                    className="mt-2 w-full"
+                    size="sm"
+                  >
+                    Cerrar
+                  </Button>
+                )}
+              </div>
+            )}
+
+            {!user && (
+              <div className="mt-4 p-3 rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-800">
+                <p className="text-sm">Debes iniciar sesión para realizar operaciones.</p>
+              </div>
+            )}
           </div>
         </div>
       )}

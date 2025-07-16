@@ -22,6 +22,29 @@ export interface UserProfile {
   is_admin: boolean
 }
 
+export interface MarketOption {
+  id: string
+  market_id: string
+  option_text: string
+  current_price: number
+  pool_amount: number
+  share_count: number
+  option_color: string // Updated to match database schema
+  is_winning_option?: boolean
+  created_at?: string
+  updated_at?: string
+}
+
+export interface PriceHistoryPoint {
+  id: string
+  market_id: string
+  option_id?: string
+  price_type: 'yes' | 'no' | 'option'
+  price: number
+  volume_24h: number
+  timestamp: string
+}
+
 export interface Market {
   id: string
   title: string
@@ -34,6 +57,7 @@ export interface Market {
   participant_count: number
   yes_price?: number
   no_price?: number
+  options?: MarketOption[]
 }
 
 export class TradingService {
@@ -55,13 +79,14 @@ export class TradingService {
     return data
   }
 
-  // Get all active markets
+  // Get all active markets with options for multiple choice
   async getActiveMarkets(): Promise<Market[]> {
     const { data: markets, error } = await this.supabase
       .from('markets')
       .select(`
         *,
-        binary_market_pools(yes_price, no_price)
+        binary_market_pools(yes_price, no_price),
+        market_options(*)
       `)
       .eq('status', 'active')
       .order('created_at', { ascending: false })
@@ -74,7 +99,8 @@ export class TradingService {
     return markets.map(market => ({
       ...market,
       yes_price: market.binary_market_pools?.[0]?.yes_price || 0.5,
-      no_price: market.binary_market_pools?.[0]?.no_price || 0.5
+      no_price: market.binary_market_pools?.[0]?.no_price || 0.5,
+      options: market.market_options || []
     }))
   }
 
@@ -95,6 +121,31 @@ export class TradingService {
 
     if (error) {
       console.error('Error executing trade:', error)
+      return { success: false, error: error.message }
+    }
+
+    return data
+  }
+
+  // Execute a multiple choice option trade
+  async executeOptionTrade(
+    marketId: string,
+    userId: string,
+    optionId: string,
+    tradeType: 'buy_option' | 'sell_option',
+    amount: number
+  ): Promise<TradeResult> {
+    const { data, error } = await this.supabase
+      .rpc('execute_option_trade', {
+        p_market_id: marketId,
+        p_user_id: userId,
+        p_option_id: optionId,
+        p_trade_type: tradeType,
+        p_amount: amount
+      })
+
+    if (error) {
+      console.error('Error executing option trade:', error)
       return { success: false, error: error.message }
     }
 
@@ -145,13 +196,16 @@ export class TradingService {
     return data
   }
 
-  // Get market details with current prices
+  // Get market details with current prices and options
   async getMarketDetails(marketId: string) {
+    console.log('Fetching market details for ID:', marketId);
+    
     const { data: market, error: marketError } = await this.supabase
       .from('markets')
       .select(`
         *,
         binary_market_pools(*),
+        market_options(*),
         market_comments(
           *,
           users_profile(username, avatar_url)
@@ -161,8 +215,22 @@ export class TradingService {
       .single()
 
     if (marketError) {
-      console.error('Error fetching market details:', marketError)
+      console.error('Error fetching market details:', {
+        error: marketError,
+        message: marketError.message,
+        code: marketError.code,
+        details: marketError.details,
+        hint: marketError.hint,
+        marketId: marketId
+      })
       return null
+    }
+
+    console.log('Successfully fetched market:', market?.title || 'Unknown');
+
+    // Sort options by display order
+    if (market.market_options) {
+      market.options = market.market_options
     }
 
     return market
@@ -172,21 +240,46 @@ export class TradingService {
   async resolveMarket(
     marketId: string,
     adminId: string,
-    outcome: 'yes' | 'no'
+    outcome: 'yes' | 'no' | string // For multiple choice, outcome can be option ID
   ) {
-    const { data, error } = await this.supabase
-      .rpc('resolve_binary_market', {
-        p_market_id: marketId,
-        p_admin_id: adminId,
-        p_outcome: outcome
-      })
+    // Check market type to determine which function to call
+    const { data: market } = await this.supabase
+      .from('markets')
+      .select('type')
+      .eq('id', marketId)
+      .single()
 
-    if (error) {
-      console.error('Error resolving market:', error)
-      return { success: false, error: error.message }
+    if (market?.type === 'multiple') {
+      // For multiple choice, outcome should be the winning option ID
+      const { data, error } = await this.supabase
+        .rpc('resolve_option_market', {
+          p_market_id: marketId,
+          p_winning_option_id: outcome,
+          p_admin_id: adminId
+        })
+
+      if (error) {
+        console.error('Error resolving option market:', error)
+        return { success: false, error: error.message }
+      }
+
+      return data
+    } else {
+      // Binary market resolution
+      const { data, error } = await this.supabase
+        .rpc('resolve_binary_market', {
+          p_market_id: marketId,
+          p_admin_id: adminId,
+          p_outcome: outcome
+        })
+
+      if (error) {
+        console.error('Error resolving binary market:', error)
+        return { success: false, error: error.message }
+      }
+
+      return data
     }
-
-    return data
   }
 
   // Create user profile manually (for debugging)
@@ -218,6 +311,34 @@ export class TradingService {
       .single()
 
     return { data, error }
+  }
+
+  // Get price history for market charts
+  async getPriceHistory(marketId: string, optionId?: string, hours: number = 24) {
+    try {
+      let query = this.supabase
+        .from('market_price_history')
+        .select('*')
+        .eq('market_id', marketId)
+        .gte('timestamp', new Date(Date.now() - hours * 60 * 60 * 1000).toISOString())
+        .order('timestamp', { ascending: true })
+
+      if (optionId) {
+        query = query.eq('option_id', optionId)
+      }
+
+      const { data, error } = await query
+
+      if (error) {
+        console.error('Error fetching price history:', error)
+        return { data: [], error }
+      }
+
+      return { data: data || [], error: null }
+    } catch (error) {
+      console.error('Unexpected error fetching price history:', error)
+      return { data: [], error }
+    }
   }
 }
 

@@ -50,3 +50,15 @@ database/04_functions.sql
 database/05_triggers_and_setup.sql
 database/06_user_profile_function.sql
 database/debug_check.sql
+database/07_multiple_choice_options.sql
+database/08_multiple_choice_functions.sql
+database/09_auto_options_trigger.sql
+create-test-markets.sql
+database/10_fix_missing_updated_at.sql
+database/97_fix_binary_trigger.sql
+database/98_test_markets_data.sql
+database/99_cleanup_convert_ids.sql
+database/test_connection.sql
+.gitignore
+database/96_fix_user_profile_creation.sql
+database/test_market_access.sql

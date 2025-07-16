@@ -1,6 +1,7 @@
-// Types for different market types
+// Market types for different market types
 export interface BaseMarket {
   id: number;
+  uuid?: string; // Add original UUID for database operations
   title: string;
   category: string;
   description: string;

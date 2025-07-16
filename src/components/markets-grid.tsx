@@ -5,414 +5,7 @@ import Link from "next/link";
 import { Market } from "@/types/market";
 import { Users, DollarSign, Archive, TrendingUp } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
-
-// Mock data for demonstration - Expanded to 26 markets
-const mockMarkets: Market[] = [
-  {
-    id: 1,
-    type: 'binary',
-    title: "¿Milei será reelecto en 2027?",
-    category: "Política",
-    description: "¿Javier Milei será reelecto como presidente de Argentina en las elecciones de 2027?",
-    yesPrice: 0.65,
-    noPrice: 0.35,
-    volume: 125000,
-    endDate: "2027-10-30",
-    participants: 1250,
-    createdAt: "2024-01-15",
-    status: 'active'
-  },
-  {
-    id: 2,
-    type: 'multiple',
-    title: "¿Quién ganará las elecciones presidenciales de 2027?",
-    category: "Política", 
-    description: "¿Qué candidato ganará las elecciones presidenciales de Argentina en 2027?",
-    options: [
-      { id: 'milei', text: 'Javier Milei', price: 0.45, color: '#f59e0b' },
-      { id: 'massa', text: 'Sergio Massa', price: 0.25, color: '#3b82f6' },
-      { id: 'bullrich', text: 'Patricia Bullrich', price: 0.15, color: '#ef4444' },
-      { id: 'otros', text: 'Otro candidato', price: 0.15, color: '#6b7280' }
-    ],
-    volume: 89000,
-    endDate: "2027-10-30", 
-    participants: 890,
-    createdAt: "2024-01-10",
-    status: 'active'
-  },
-  {
-    id: 3,
-    type: 'binary',
-    title: "¿El dólar superará los $2000 pesos en 2025?",
-    category: "Economía",
-    description: "¿El tipo de cambio oficial USD/ARS superará los $2000 pesos durante 2025?",
-    yesPrice: 0.58,
-    noPrice: 0.42,
-    volume: 210000,
-    endDate: "2025-12-31",
-    participants: 2100,
-    createdAt: "2024-01-20",
-    status: 'active'
-  },
-  {
-    id: 4,
-    type: 'multiple',
-    title: "¿Cuántos goles hará Messi en el Mundial 2026?",
-    category: "Deporte",
-    description: "¿Cuántos goles marcará Lionel Messi en el Mundial de fútbol de 2026?",
-    options: [
-      { id: 'no-juega', text: 'No jugará', price: 0.35, color: '#6b7280' },
-      { id: '0-goles', text: '0 goles', price: 0.25, color: '#ef4444' },
-      { id: '1-2-goles', text: '1-2 goles', price: 0.25, color: '#f59e0b' },
-      { id: '3-mas-goles', text: '3+ goles', price: 0.15, color: '#10b981' }
-    ],
-    volume: 156000,
-    endDate: "2026-07-15",
-    participants: 1800,
-    createdAt: "2024-01-25",
-    status: 'active'
-  },
-  {
-    id: 5,
-    type: 'binary',
-    title: "¿La inflación será menor al 50% en 2025?",
-    category: "Economía",
-    description: "¿La inflación anual de Argentina será menor al 50% en 2025?",
-    yesPrice: 0.38,
-    noPrice: 0.62,
-    volume: 178000,
-    endDate: "2025-12-31",
-    participants: 1650,
-    createdAt: "2024-02-01",
-    status: 'active'
-  },
-  {
-    id: 6,
-    type: 'multiple',
-    title: "¿Qué equipo ganará el próximo Mundial de Fútbol?",
-    category: "Deporte",
-    description: "¿Qué selección nacional ganará el Mundial de fútbol de 2026?",
-    options: [
-      { id: 'argentina', text: 'Argentina', price: 0.30, color: '#3b82f6' },
-      { id: 'brasil', text: 'Brasil', price: 0.25, color: '#10b981' },
-      { id: 'francia', text: 'Francia', price: 0.20, color: '#8b5cf6' },
-      { id: 'españa', text: 'España', price: 0.15, color: '#ef4444' },
-      { id: 'otros', text: 'Otro país', price: 0.10, color: '#6b7280' }
-    ],
-    volume: 45000,
-    endDate: "2026-07-15",
-    participants: 450,
-    createdAt: "2024-02-05",
-    status: 'active'
-  },
-  {
-    id: 7,
-    type: 'binary',
-    title: "¿River ganará la Libertadores 2025?",
-    category: "Deporte",
-    description: "¿Club Atlético River Plate ganará la Copa Libertadores 2025?",
-    yesPrice: 0.22,
-    noPrice: 0.78,
-    volume: 89000,
-    endDate: "2025-11-30",
-    participants: 890,
-    createdAt: "2024-01-10",
-    status: 'active'
-  },
-  {
-    id: 8,
-    type: 'multiple',
-    title: "¿Qué será el clima este verano?",
-    category: "Clima",
-    description: "¿Cómo será la temperatura promedio del verano 2024-2025 en Buenos Aires?",
-    options: [
-      { id: 'muy-calido', text: 'Muy cálido (>28°C)', price: 0.40, color: '#ef4444' },
-      { id: 'normal', text: 'Normal (24-28°C)', price: 0.35, color: '#f59e0b' },
-      { id: 'fresco', text: 'Fresco (<24°C)', price: 0.25, color: '#3b82f6' }
-    ],
-    volume: 34000,
-    endDate: "2025-03-20",
-    participants: 340,
-    createdAt: "2024-12-01",
-    status: 'active'
-  },
-  {
-    id: 9,
-    type: 'binary',
-    title: "¿Habrá recesión en 2025?",
-    category: "Economía",
-    description: "¿Argentina entrará en recesión técnica durante 2025?",
-    yesPrice: 0.47,
-    noPrice: 0.53,
-    volume: 156000,
-    endDate: "2025-12-31",
-    participants: 1200,
-    createdAt: "2024-01-08",
-    status: 'active'
-  },
-  {
-    id: 10,
-    type: 'binary',
-    title: "¿Boca será campeón este año?",
-    category: "Deporte",
-    description: "¿Club Atlético Boca Juniors ganará el campeonato argentino 2025?",
-    yesPrice: 0.35,
-    noPrice: 0.65,
-    volume: 112000,
-    endDate: "2025-12-15",
-    participants: 980,
-    createdAt: "2024-02-15",
-    status: 'active'
-  },
-  {
-    id: 11,
-    type: 'multiple',
-    title: "¿Cuál será la película más taquillera?",
-    category: "Entretenimiento",
-    description: "¿Qué película será la más taquillera de 2025 a nivel mundial?",
-    options: [
-      { id: 'marvel', text: 'Película de Marvel', price: 0.30, color: '#ef4444' },
-      { id: 'disney', text: 'Película de Disney', price: 0.25, color: '#3b82f6' },
-      { id: 'sequel', text: 'Secuela/Remake', price: 0.25, color: '#f59e0b' },
-      { id: 'original', text: 'Historia original', price: 0.20, color: '#10b981' }
-    ],
-    volume: 67000,
-    endDate: "2025-12-31",
-    participants: 670,
-    createdAt: "2024-01-20",
-    status: 'active'
-  },
-  {
-    id: 12,
-    type: 'binary',
-    title: "¿Llueve más de 3 días seguidos en enero?",
-    category: "Clima",
-    description: "¿Habrá 3 o más días consecutivos de lluvia en Buenos Aires durante enero 2025?",
-    yesPrice: 0.42,
-    noPrice: 0.58,
-    volume: 23000,
-    endDate: "2025-01-31",
-    participants: 230,
-    createdAt: "2024-12-20",
-    status: 'active'
-  },
-  {
-    id: 13,
-    type: 'binary',
-    title: "¿Tesla supera los $300 por acción?",
-    category: "Tecnología",
-    description: "¿Las acciones de Tesla superarán los $300 USD antes del final de 2025?",
-    yesPrice: 0.61,
-    noPrice: 0.39,
-    volume: 189000,
-    endDate: "2025-12-31",
-    participants: 1890,
-    createdAt: "2024-01-05",
-    status: 'active'
-  },
-  {
-    id: 14,
-    type: 'multiple',
-    title: "¿Qué criptomoneda subirá más?",
-    category: "Tecnología",
-    description: "¿Qué criptomoneda tendrá mayor ganancia porcentual en 2025?",
-    options: [
-      { id: 'bitcoin', text: 'Bitcoin', price: 0.35, color: '#f59e0b' },
-      { id: 'ethereum', text: 'Ethereum', price: 0.30, color: '#3b82f6' },
-      { id: 'altcoin', text: 'Otra altcoin', price: 0.25, color: '#10b981' },
-      { id: 'stablecoin', text: 'Stablecoin', price: 0.10, color: '#6b7280' }
-    ],
-    volume: 134000,
-    endDate: "2025-12-31",
-    participants: 1340,
-    createdAt: "2024-01-12",
-    status: 'active'
-  },
-  {
-    id: 15,
-    type: 'binary',
-    title: "¿Cristina será candidata en 2027?",
-    category: "Política",
-    description: "¿Cristina Fernández de Kirchner será candidata presidencial en las elecciones de 2027?",
-    yesPrice: 0.54,
-    noPrice: 0.46,
-    volume: 201000,
-    endDate: "2027-08-31",
-    participants: 2010,
-    createdAt: "2024-01-18",
-    status: 'active'
-  },
-  {
-    id: 16,
-    type: 'binary',
-    title: "¿Aparece vida extraterrestre en 2025?",
-    category: "Ciencia",
-    description: "¿Se confirma oficialmente la existencia de vida extraterrestre durante 2025?",
-    yesPrice: 0.08,
-    noPrice: 0.92,
-    volume: 78000,
-    endDate: "2025-12-31",
-    participants: 780,
-    createdAt: "2024-01-01",
-    status: 'active'
-  },
-  {
-    id: 17,
-    type: 'multiple',
-    title: "¿Cuál será el streaming más popular?",
-    category: "Entretenimiento",
-    description: "¿Qué plataforma de streaming tendrá más suscriptores a fin de 2025?",
-    options: [
-      { id: 'netflix', text: 'Netflix', price: 0.40, color: '#ef4444' },
-      { id: 'disney', text: 'Disney+', price: 0.25, color: '#3b82f6' },
-      { id: 'amazon', text: 'Amazon Prime', price: 0.20, color: '#f59e0b' },
-      { id: 'otros', text: 'Otro', price: 0.15, color: '#6b7280' }
-    ],
-    volume: 45000,
-    endDate: "2025-12-31",
-    participants: 450,
-    createdAt: "2024-02-10",
-    status: 'active'
-  },
-  {
-    id: 18,
-    type: 'binary',
-    title: "¿Lollapalooza vuelve a Argentina?",
-    category: "Entretenimiento",
-    description: "¿El festival Lollapalooza regresará a Argentina en 2025?",
-    yesPrice: 0.73,
-    noPrice: 0.27,
-    volume: 56000,
-    endDate: "2025-12-31",
-    participants: 560,
-    createdAt: "2024-01-25",
-    status: 'active'
-  },
-  {
-    id: 19,
-    type: 'binary',
-    title: "¿Hace más de 40°C en Buenos Aires?",
-    category: "Clima",
-    description: "¿La temperatura en Buenos Aires superará los 40°C durante el verano 2024-2025?",
-    yesPrice: 0.68,
-    noPrice: 0.32,
-    volume: 34000,
-    endDate: "2025-03-20",
-    participants: 340,
-    createdAt: "2024-12-15",
-    status: 'active'
-  },
-  {
-    id: 20,
-    type: 'multiple',
-    title: "¿Quién ganará el Martín Fierro 2025?",
-    category: "Entretenimiento",
-    description: "¿Qué programa ganará el Martín Fierro al mejor programa de televisión 2025?",
-    options: [
-      { id: 'mirtha', text: 'La Noche de Mirtha', price: 0.30, color: '#f59e0b' },
-      { id: 'tinelli', text: 'Programa de Tinelli', price: 0.25, color: '#3b82f6' },
-      { id: 'susana', text: 'Susana Giménez', price: 0.25, color: '#ef4444' },
-      { id: 'otro', text: 'Otro programa', price: 0.20, color: '#10b981' }
-    ],
-    volume: 42000,
-    endDate: "2025-05-15",
-    participants: 420,
-    createdAt: "2024-02-01",
-    status: 'active'
-  },
-  {
-    id: 21,
-    type: 'binary',
-    title: "¿OpenAI lanza GPT-5 en 2025?",
-    category: "Tecnología",
-    description: "¿OpenAI lanzará oficialmente GPT-5 durante el año 2025?",
-    yesPrice: 0.76,
-    noPrice: 0.24,
-    volume: 167000,
-    endDate: "2025-12-31",
-    participants: 1670,
-    createdAt: "2024-01-03",
-    status: 'active'
-  },
-  {
-    id: 22,
-    type: 'binary',
-    title: "¿Racing desciende este año?",
-    category: "Deporte",
-    description: "¿Racing Club descenderá a la Primera Nacional en 2025?",
-    yesPrice: 0.15,
-    noPrice: 0.85,
-    volume: 67000,
-    endDate: "2025-12-15",
-    participants: 670,
-    createdAt: "2024-02-20",
-    status: 'active'
-  },
-  {
-    id: 23,
-    type: 'multiple',
-    title: "¿Cuál será el precio del Bitcoin?",
-    category: "Tecnología",
-    description: "¿En qué rango estará el precio del Bitcoin al final de 2025?",
-    options: [
-      { id: 'bajo-50k', text: 'Menos de $50k', price: 0.20, color: '#ef4444' },
-      { id: '50k-100k', text: '$50k - $100k', price: 0.35, color: '#f59e0b' },
-      { id: '100k-150k', text: '$100k - $150k', price: 0.30, color: '#10b981' },
-      { id: 'mas-150k', text: 'Más de $150k', price: 0.15, color: '#8b5cf6' }
-    ],
-    volume: 234000,
-    endDate: "2025-12-31",
-    participants: 2340,
-    createdAt: "2024-01-07",
-    status: 'active'
-  },
-  {
-    id: 24,
-    type: 'binary',
-    title: "¿Vuelve el servicio militar obligatorio?",
-    category: "Política",
-    description: "¿Argentina reinstaurará el servicio militar obligatorio durante 2025?",
-    yesPrice: 0.23,
-    noPrice: 0.77,
-    volume: 89000,
-    endDate: "2025-12-31",
-    participants: 890,
-    createdAt: "2024-01-30",
-    status: 'active'
-  },
-  {
-    id: 25,
-    type: 'binary',
-    title: "¿Llueve en el día de la independencia?",
-    category: "Clima",
-    description: "¿Llueve en Buenos Aires el 9 de julio de 2025?",
-    yesPrice: 0.31,
-    noPrice: 0.69,
-    volume: 12000,
-    endDate: "2025-07-09",
-    participants: 120,
-    createdAt: "2024-06-01",
-    status: 'active'
-  },
-  {
-    id: 26,
-    type: 'multiple',
-    title: "¿Qué empresa será más valiosa?",
-    category: "Tecnología",
-    description: "¿Qué empresa tendrá la mayor capitalización de mercado a fin de 2025?",
-    options: [
-      { id: 'apple', text: 'Apple', price: 0.35, color: '#6b7280' },
-      { id: 'microsoft', text: 'Microsoft', price: 0.30, color: '#3b82f6' },
-      { id: 'nvidia', text: 'NVIDIA', price: 0.25, color: '#10b981' },
-      { id: 'otra', text: 'Otra empresa', price: 0.10, color: '#ef4444' }
-    ],
-    volume: 178000,
-    endDate: "2025-12-31",
-    participants: 1780,
-    createdAt: "2024-01-14",
-    status: 'active'
-  }
-];
+import { useRealMarkets } from "@/hooks/useRealMarkets";
 
 const categories = ["Todos", "Política", "Deporte", "Economía", "Clima", "Tecnología", "Entretenimiento", "Ciencia"];
 
@@ -434,9 +27,12 @@ export function MarketsGrid() {
   const [isLoading, setIsLoading] = useState(false);
   const observerRef = useRef<HTMLDivElement>(null);
 
+  // Get real markets data
+  const { markets: realMarkets, loading: marketsLoading, error: marketsError, refetch } = useRealMarkets();
+
   // Filter and sort markets
   const getFilteredAndSortedMarkets = useCallback(() => {
-    let filtered = mockMarkets;
+    let filtered = realMarkets;
 
     // Filter by category
     if (selectedCategory !== "Todos") {
@@ -472,7 +68,7 @@ export function MarketsGrid() {
     }
 
     return filtered;
-  }, [selectedCategory, selectedSort, showClosed]);
+  }, [realMarkets, selectedCategory, selectedSort, showClosed]);
 
   // Load more markets
   const loadMore = useCallback(() => {
@@ -574,41 +170,67 @@ export function MarketsGrid() {
         </div>
       </div>
 
-      {/* Markets Grid - Masonry Style */}
-      <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
-        {displayedMarkets.map((market, index) => (
-          <div key={`${market.id}-${index}`} className="break-inside-avoid mb-6">
-            <MarketCard market={market} />
-          </div>
-        ))}
-      </div>
-
-      {/* Loading indicator */}
-      {isLoading && (
+      {/* Error State */}
+      {marketsError && (
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="text-muted-foreground mt-2">Cargando más mercados...</p>
+          <p className="text-red-600 mb-4">❌ Error cargando mercados: {marketsError}</p>
+          <Button 
+            onClick={refetch}
+            variant="outline"
+            size="sm"
+          >
+            Reintentar
+          </Button>
         </div>
       )}
 
-      {/* Load more trigger */}
-      {hasMore && !isLoading && (
-        <div ref={observerRef} className="h-4" />
-      )}
-
-      {/* No more markets message */}
-      {!hasMore && displayedMarkets.length > 0 && (
-        <div className="text-center py-8">
-          <p className="text-muted-foreground">No hay más mercados para mostrar</p>
-        </div>
-      )}
-
-      {/* No markets found */}
-      {displayedMarkets.length === 0 && !isLoading && (
+      {/* Initial Loading State */}
+      {marketsLoading && displayedMarkets.length === 0 && (
         <div className="text-center py-12">
-          <p className="text-muted-foreground">No se encontraron mercados para los filtros seleccionados</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Cargando mercados desde la base de datos...</p>
         </div>
       )}
+
+      {/* Markets Grid - Masonry Style */}
+      {!marketsLoading || displayedMarkets.length > 0 ? (
+        <>
+          <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+            {displayedMarkets.map((market, index) => (
+              <div key={`${market.id}-${index}`} className="break-inside-avoid mb-6">
+                <MarketCard market={market} />
+              </div>
+            ))}
+          </div>
+
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Cargando más mercados...</p>
+            </div>
+          )}
+
+          {/* Load more trigger */}
+          {hasMore && !isLoading && (
+            <div ref={observerRef} className="h-4" />
+          )}
+
+          {/* No more markets message */}
+          {!hasMore && displayedMarkets.length > 0 && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No hay más mercados para mostrar</p>
+            </div>
+          )}
+
+          {/* No markets found */}
+          {displayedMarkets.length === 0 && !marketsLoading && (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground">No se encontraron mercados para los filtros seleccionados</p>
+            </div>
+          )}
+        </>
+      ) : null}
     </div>
   );
 }
