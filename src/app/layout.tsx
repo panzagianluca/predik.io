@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { Navbar } from "@/components/navbar";
 import { ToastContainer } from "@/components/ui/toast";
+import { AuthProvider } from "../../lib/auth/AuthProvider";
 
 export const metadata: Metadata = {
   title: "Predik - Mercados de Predicción",
@@ -16,9 +17,11 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body className="min-h-screen bg-background antialiased">
-        <Navbar />
-        <main>{children}</main>
-        <ToastContainer />
+        <AuthProvider>
+          <Navbar />
+          <main>{children}</main>
+          <ToastContainer />
+        </AuthProvider>
       </body>
     </html>
   );

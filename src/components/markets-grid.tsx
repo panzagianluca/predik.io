@@ -534,7 +534,7 @@ export function MarketsGrid() {
               className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                 selectedCategory === category
                   ? 'bg-[rgb(var(--primary))] text-white'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
               }`}
             >
               {category}
@@ -551,7 +551,7 @@ export function MarketsGrid() {
               className={`px-3 py-1 text-xs font-medium rounded transition-colors flex items-center gap-1 ${
                 selectedSort === option.value
                   ? 'bg-[rgb(var(--primary))] text-white'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-gray-100'
               }`}
             >
               {option.value === 'trending' && <TrendingUp size={12} />}
@@ -566,7 +566,7 @@ export function MarketsGrid() {
             variant={showClosed ? "default" : "outline"}
             size="sm"
             onClick={() => setShowClosed(!showClosed)}
-            className={`text-xs font-medium ${showClosed ? "" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+            className={`text-xs font-medium ${showClosed ? "text-gray-600 hover:text-gray-600" : "border-gray-300 text-gray-600 hover:text-gray-600 hover:bg-gray-100"}`}
           >
             <Archive size={14} className="mr-1" />
             Cerrados

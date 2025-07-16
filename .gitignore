@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+PREDIK_IO_IMPLEMENTATION_PLAN.md
+SUPABASE_SETUP_GUIDE.md
+PREDIK_IO_IMPLEMENTATION_PLAN.md
+.gitignore

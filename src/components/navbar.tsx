@@ -2,6 +2,9 @@
 
 import { Search, Menu, LogOut, Wallet, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AuthButton } from "@/components/AuthButton";
+import { useAuth } from "../../lib/auth/AuthProvider";
+import { LoginModal } from "@/components/LoginModal";
 import Link from "next/link";
 import Image from "next/image";
 import { useState, useEffect, useRef } from "react";
@@ -112,6 +115,7 @@ export function Navbar() {
   const [searchResults, setSearchResults] = useState<Market[]>([]);
   const [showResults, setShowResults] = useState(false);
   const [showHowItWorks, setShowHowItWorks] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -148,6 +152,76 @@ export function Navbar() {
     setShowResults(false);
     setSearchQuery("");
   };
+
+// User Menu Section Component
+function UserMenuSection() {
+  const { user, signOut } = useAuth()
+
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error) {
+      console.error('Error signing out:', error)
+    }
+  }
+
+  if (!user) {
+    return (
+      <Button 
+        onClick={() => setShowAuthModal(true)}
+        className="bg-[#A855F7] hover:bg-[#9333EA] text-white cursor-pointer" 
+        size="sm"
+      >
+        Acceder
+      </Button>
+    )
+  }
+
+  return (
+    <div className="flex items-center space-x-3">
+      <AuthButton />
+      
+      {/* User dropdown */}
+      <div className="relative group">
+        <Button variant="ghost" size="icon">
+          <Menu className="h-4 w-4" />
+        </Button>
+        
+        {/* Dropdown menu */}
+        <div className="absolute right-0 top-full mt-2 w-48 rounded-md border bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+          <div className="py-1">
+            <Link href="/perfil" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              <Menu className="mr-2 h-4 w-4" />
+              Perfil
+            </Link>
+            <Link href="/portafolio" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              <Wallet className="mr-2 h-4 w-4" />
+              Portafolio
+            </Link>
+            <Link href="/proponer" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              💡 Proponer Mercado
+            </Link>
+            <Link href="/terminos" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              Términos
+            </Link>
+            <Link href="/privacidad" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
+              Privacidad
+            </Link>
+            <button 
+              onClick={handleSignOut}
+              className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors cursor-pointer"
+              type="button"
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
   return (
     <>
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -247,43 +321,7 @@ export function Navbar() {
             ¿Cómo Funciona?
           </button>
           
-          <Button className="bg-[#A855F7] hover:bg-[#9333EA] text-white" size="sm">
-            Acceder
-          </Button>
-          
-          {/* User dropdown placeholder - will implement with actual auth */}
-          <div className="relative group">
-            <Button variant="ghost" size="icon">
-              <Menu className="h-4 w-4" />
-            </Button>
-            
-            {/* Dropdown menu (hidden for now) */}
-            <div className="absolute right-0 top-full mt-2 w-48 rounded-md border bg-white shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-              <div className="py-1">
-                <Link href="/perfil" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
-                  <Menu className="mr-2 h-4 w-4" />
-                  Perfil
-                </Link>
-                <Link href="/portafolio" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
-                  <Wallet className="mr-2 h-4 w-4" />
-                  Portafolio
-                </Link>
-                <Link href="/proponer" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
-                  💡 Proponer Mercado
-                </Link>
-                <Link href="/terminos" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
-                  Términos
-                </Link>
-                <Link href="/privacidad" className="flex items-center px-4 py-2 text-sm text-foreground hover:bg-gray-50 transition-colors">
-                  Privacidad
-                </Link>
-                <button className="flex w-full items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  Cerrar Sesión
-                </button>
-              </div>
-            </div>
-          </div>
+          <UserMenuSection />
         </div>
       </div>
     </header>
@@ -292,6 +330,12 @@ export function Navbar() {
     <HowItWorksModal 
       isOpen={showHowItWorks}
       onClose={() => setShowHowItWorks(false)}
+    />
+    
+    {/* Login Modal */}
+    <LoginModal 
+      isOpen={showAuthModal}
+      onClose={() => setShowAuthModal(false)}
     />
     </>
   );
@@ -331,8 +375,8 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 Navegá entre los mercados disponibles y elegí uno que te interese. Podés hacer predicciones sobre política, deportes, economía y muchos temas más.
               </p>
             </div>
-            <Button onClick={nextStep} className="w-full bg-purple-600 hover:bg-purple-700">
-              SIGUIENTE
+            <Button onClick={nextStep} className="w-full bg-[#A855F7] hover:bg-[#9333EA] cursor-pointer">
+              Siguiente
             </Button>
           </div>
         );
@@ -348,7 +392,7 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
                 Usá tus <strong>Prediks gratuitos</strong> para comprar acciones de "SÍ" o "NO". Los Prediks son una moneda completamente ficticia, <strong>sin valor monetario real</strong>.
               </p>
             </div>
-            <Button onClick={nextStep} className="w-full bg-purple-600 hover:bg-purple-700">
+            <Button onClick={nextStep} className="w-full bg-[#A855F7] hover:bg-[#9333EA] cursor-pointer">
               Siguiente
             </Button>
           </div>
@@ -362,10 +406,10 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
             <div className="space-y-4">
               <h2 className="text-2xl font-bold">3. Ganá Prediks</h2>
               <p className="text-gray-600 max-w-md mx-auto">
-                Si acertás tu predicción, ganás más Prediks ficticios. Si no acertás, perdés algunos (pero siempre podés conseguir más gratis). ¡Todo es puro entretenimiento!
+                Si acertás tu predicción, ganás más Prediks. Si no acertás, perdés algunos (pero siempre podés conseguir más gratis). ¡Todo es puro entretenimiento!
               </p>
             </div>
-            <Button onClick={nextStep} className="w-full bg-purple-600 hover:bg-purple-700">
+            <Button onClick={nextStep} className="w-full bg-[#A855F7] hover:bg-[#9333EA] cursor-pointer">
               Empezar Ahora
             </Button>
           </div>
@@ -373,18 +417,50 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
       case 4:
         return (
           <div className="text-center space-y-6">
-            <div className="space-y-6">
-              <h2 className="text-2xl font-bold">Bienvenido a Predik</h2>
-              <p className="text-gray-600 max-w-md mx-auto">
-                ¡Empezá a hacer predicciones gratis y divertite con Prediks!
-              </p>
-              <Button
-                onClick={onClose}
-                className="w-full bg-purple-600 hover:bg-purple-700 flex items-center justify-center gap-2"
-              >
-                Continuar con Google
-              </Button>
+            {/* Logo - 3x bigger, matching LoginModal */}
+            <div className="relative mx-auto w-72 h-36">
+              <Image 
+                src="/predik.svg" 
+                alt="Predik" 
+                fill
+                className="object-contain"
+              />
             </div>
+            
+            <div className="space-y-4">
+              <h3 className="text-2xl">El futuro tiene precio.</h3>
+              <p className="text-gray-600 max-w-md mx-auto">
+                Accedé para empezar a hacer predicciones y ganar.
+              </p>
+            </div>
+            
+            {/* Google Sign In Button */}
+            <Button
+              onClick={onClose}
+              className="w-full bg-[#A855F7] hover:bg-[#9333EA] flex items-center justify-center gap-2 cursor-pointer"
+            >
+              <div className="bg-white rounded-full p-1">
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  />
+                </svg>
+              </div>
+              Continuar con Google
+            </Button>
           </div>
         );
       default:
@@ -405,7 +481,7 @@ function HowItWorksModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => 
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl cursor-pointer"
         >
           ×
         </button>

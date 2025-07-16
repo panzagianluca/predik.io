@@ -9,7 +9,7 @@
 - **$10,000 initial liquidity** for all markets (infinite liquidity simulation)
 - **$1 minimum trade** amount
 - **No trading fees**
-- **Google OAuth only** (no email/password)
+- **Google OAuth through supabase only** (no email/password)
 - **Admin-only market creation** and resolution
 - **Real-time price updates** (if feasible)
 - **Push notifications** for market resolutions only
@@ -390,11 +390,19 @@ CREATE TRIGGER trigger_record_price_history
 5. **Test with sample data**
 
 ### **Phase 2: Authentication (Day 2)**
-1. **Configure Google OAuth in Supabase**
-2. **Install Supabase client in Next.js**
-3. **Create auth provider context**
-4. **Add login/logout buttons**
-5. **Create user profile on first login**
+1. **Configure Google OAuth Provider in Supabase Dashboard**
+   - Add Google OAuth app credentials to Supabase Auth settings
+   - Configure redirect URLs for production and local development
+   - Set up authorized domains
+2. **Install Supabase client packages (@supabase/supabase-js, @supabase/ssr)**
+3. **Create Supabase client utilities (client-side and server-side)**
+4. **Create AuthProvider context using Supabase Auth**
+   - Handle authentication state management
+   - Auto-create user profiles on first login
+   - Manage session persistence
+5. **Add Google sign-in/sign-out functionality**
+6. **Create auth callback route for OAuth redirect**
+7. **Update navbar with authentication UI**
 
 ### **Phase 3: API Integration (Day 3-4)**
 1. **Create Supabase client utilities**

@@ -112,7 +112,7 @@ async function getMarket(id: string): Promise<Market | null> {
 export default async function MarketPage({ 
   params 
 }: { 
-  params: { id: string } 
+  params: Promise<{ id: string }> 
 }) {
   const { id } = await params;
   const market = await getMarket(id);
